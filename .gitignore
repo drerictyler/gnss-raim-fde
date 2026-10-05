@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+# Sample data is downloaded by scripts/get_sample_data.py, not committed
+data/*.05o
+data/*.05n
