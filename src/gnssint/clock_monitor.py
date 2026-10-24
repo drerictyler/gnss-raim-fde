@@ -106,7 +106,7 @@ def estimate_measurement_variance(bias_meas):
     """White-noise variance of a smooth clock-bias series from its second differences.
 
     For b_k = smooth(t_k) + v_k with white v, var(b_{k+1} - 2 b_k + b_{k-1}) = 6 var(v).
-    The WLS covariance is not used on purpose: it comes from the *overbounded*
+    The WLS covariance is not used on purpose: it comes from the *inflated*
     pseudorange sigmas that RAIM needs, which would make this monitor insensitive.
     """
     return float(np.var(np.diff(np.asarray(bias_meas, float), 2)) / 6.0)
@@ -115,7 +115,7 @@ def estimate_measurement_variance(bias_meas):
 def calibrate(t, bias_meas, meas_var, cfg=ClockMonitorConfig()):
     """Grid-search q_drift and q_accel so the fault-free NIS averages closest to 1.
 
-    This is the clock-model analogue of sigma overbounding: tune on data you
+    This is the clock-model analogue of calibrating sigma: tune on data you
     trust to be clean, then validate on data you did not tune on.
     """
     best, best_err = cfg, np.inf

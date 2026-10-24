@@ -52,7 +52,7 @@ def sigma_model(el, a=0.6, b=0.9):
     sigma^2 = a^2 + (b / sin el)^2.
 
     The defaults are placeholders: calibrate a and b from fault-free data
-    (see experiments/run_real_data.py) so the model *overbounds* the real
-    errors. RAIM thresholds and protection levels are only as honest as this model.
+    (see experiments/run_real_data.py) and inflate them so the model is
+    conservative. RAIM thresholds and protection levels are only as honest as this model.
     """
     return np.sqrt(a ** 2 + (b / np.sin(el)) ** 2)

@@ -1,6 +1,6 @@
 # Real-data results (station 0759, GSI Japan, 2005-04-02, 1 h, 30 s)
 
-Calibrated error model (1.25x overbound): sigma^2 = 0.44^2 + (0.41 / sin el)^2 m^2
+Calibrated error model (sigma inflated 1.25x): sigma^2 = 0.44^2 + (0.41 / sin el)^2 m^2
 
 ## Nominal (no injected faults)
 - RAIM alarms: 0 of 120 epochs (P_fa = 1e-05); max T/T_D = 0.19
@@ -8,7 +8,7 @@ Calibrated error model (1.25x overbound): sigma^2 = 0.44^2 + (0.41 / sin el)^2 m
 - Vertical error: mean 0.53 m, max 2.23 m; VPL 13.6-65.3 m
 
 ## Clock monitor calibration
-- Clock-estimate noise from second differences: 0.41 m (the WLS covariance says 1.37 m, because RAIM's sigmas are deliberately overbounded)
+- Clock-estimate noise from second differences: 0.41 m (the WLS covariance says 1.37 m, because RAIM's sigmas are deliberately inflated)
 - Process noise tuned on the first 60 epochs (q_drift = 3.2e-07, q_accel = 3.2e-09); on the untouched second half: mean NIS 0.85, false alarms 0 per-epoch, 0 window
 
 ## Scenario A: G11 ramps at 0.2 m/s from t = 30 min
