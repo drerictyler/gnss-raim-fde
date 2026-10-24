@@ -105,14 +105,17 @@ def main():
         worst_gap = max(worst_gap, np.abs(emp - theory).max())
         for bias, e_, t_ in list(zip(biases, emp, theory))[::3]:
             lines.append(f"| {meas.sats[idx]} ({label}) | {bias:.1f} | {e_:.3f} | {t_:.3f} |")
-        line, = ax.plot(biases, theory, label=f"{meas.sats[idx]} ({label}) theory")
-        ax.plot(biases, emp, "o", color=line.get_color(), ms=4, label=f"{meas.sats[idx]} simulated")
+        fine = np.linspace(0.0, biases[-1], 400)            # theory as a smooth curve
+        lam = np.maximum((fine / scale) ** 2, 1e-12)         # keeps ncx2 happy at b = 0
+        line, = ax.plot(fine, ncx2.sf(thr, dof, lam), "-", label=f"{meas.sats[idx]} ({label}) theory")
+        ax.plot(biases, emp, "o", color=line.get_color(), ms=5, label=f"{meas.sats[idx]} simulated")
         ax.axvline(pb * scale, color=line.get_color(), ls=":", lw=1)
     lines += ["", f"- Largest |empirical - theory| over all points: {worst_gap:.3f} "
               "(20,000 trials per point, so ~0.01 is sampling noise)", ""]
-    ax.set(xlabel="bias on one satellite (m)", ylabel="probability of detection",
-           title="RAIM detection: simulation vs theory (dotted: bias used for protection levels)")
-    ax.legend(fontsize=8)
+    ax.set(xlabel="bias on one satellite (m)", ylabel="probability of detection")
+    ax.set_title("RAIM detection: simulation vs theory\n(dotted: bias used for the protection level)",
+                 fontsize=12)
+    ax.legend(fontsize=9, loc="lower right")
     fig.savefig(RESULTS / "monte_carlo.png", dpi=130)
 
     # 3. What the HPL means ----------------------------------------------------

@@ -20,7 +20,7 @@ from gnssint import faults                                              # noqa: 
 from gnssint.clock_monitor import (calibrate, estimate_measurement_variance,  # noqa: E402
                                    run_clock_monitor)
 from gnssint.orbits import ecef_to_geodetic, enu_rotation              # noqa: E402
-from gnssint.pipeline import calibrate_sigma, process                  # noqa: E402
+from gnssint.pipeline import SIGMA_INFLATION, calibrate_sigma, process # noqa: E402
 from gnssint.raim import RaimConfig, raim_check                        # noqa: E402
 from gnssint.rinex import read_nav, read_obs                           # noqa: E402
 from gnssint.solver import prepare_epoch, wls                          # noqa: E402
@@ -68,7 +68,7 @@ def main():
 
     # 1. Calibrate the pseudorange error model on the fault-free data -------------
     a, b = calibrate_sigma(obs, nav, ref)
-    lines += [f"Calibrated error model (1.25x overbound): sigma^2 = {a:.2f}^2 + ({b:.2f} / sin el)^2 m^2", ""]
+    lines += [f"Calibrated error model (sigma inflated {SIGMA_INFLATION}x): sigma^2 = {a:.2f}^2 + ({b:.2f} / sin el)^2 m^2", ""]
 
     # 2. Nominal run ----------------------------------------------------------
     nom = arrays(process(obs, nav, ref, (a, b), RAIM), t0)
@@ -90,7 +90,7 @@ def main():
     lines += ["## Clock monitor calibration",
               f"- Clock-estimate noise from second differences: {np.sqrt(r_clk):.2f} m "
               f"(the WLS covariance says {np.sqrt(np.median(nom['clock_var'])):.2f} m, because RAIM's "
-              "sigmas are deliberately overbounded)",
+              "sigmas are deliberately inflated)",
               f"- Process noise tuned on the first {CALIBRATION_EPOCHS} epochs (q_drift = {ccfg.q_drift:.1e}, "
               f"q_accel = {ccfg.q_accel:.1e}); on the untouched second half: mean NIS "
               f"{np.nanmean(clk_nom.nis[CALIBRATION_EPOCHS:]):.2f}, false alarms {fa_epoch} per-epoch, "
@@ -163,30 +163,39 @@ def main():
               "  reference such as an inertial cross-check.", ""]
 
     # 6. Figure -----------------------------------------------------------------
-    fig, ax = plt.subplots(3, 1, figsize=(8, 10), constrained_layout=True)
+    plt.rcParams.update({"font.size": 11, "axes.titlesize": 13, "axes.labelsize": 11,
+                         "legend.fontsize": 10})
+    fig, ax = plt.subplots(3, 1, figsize=(8, 11), constrained_layout=True)
     m = lambda s: s / 60.0
-    ax[0].semilogy(m(nom["t"]), nom["ratio"], label="nominal")
-    ax[0].semilogy(m(fde_a["t"]), fde_a["ratio"], label=f"{sat} ramp {rate_a} m/s")
-    ax[0].axhline(1.0, color="k", ls="--", lw=1, label="threshold")
-    ax[0].axvline(m(FAULT_START_S), color="grey", lw=0.8)
-    ax[0].set(title="A. RAIM test statistic / threshold", ylabel="T / T_D")
-    ax[0].legend(fontsize=8)
 
-    ax[1].semilogy(m(clk_nom.t), clk_nom.nis, label="nominal")
+    def mark_onset(a):
+        a.axvline(m(FAULT_START_S), color="grey", lw=1.2)
+        a.annotate("attack starts", xy=(m(FAULT_START_S), 1.0), xycoords=("data", "axes fraction"),
+                   xytext=(4, -4), textcoords="offset points", ha="left", va="top", color="dimgrey")
+
+    ax[0].semilogy(m(nom["t"]), nom["ratio"], label="no attack")
+    ax[0].semilogy(m(fde_a["t"]), fde_a["ratio"], label=f"{sat} range grows {rate_a} m/s")
+    ax[0].axhline(1.0, color="k", ls="--", lw=1, label="alarm threshold")
+    mark_onset(ax[0])
+    ax[0].set(title="A: one bad satellite (RAIM)", ylabel="test statistic / threshold (-)")
+    ax[0].legend(loc="upper left")
+
+    ax[1].semilogy(m(clk_nom.t), clk_nom.nis, label="no attack")
     ax[1].semilogy(m(trace_b.t), trace_b.nis, label="time push 0.2 m/s")
     from scipy.stats import chi2
-    ax[1].axhline(chi2.isf(ccfg.p_fa, 1), color="k", ls="--", lw=1, label="threshold")
-    ax[1].axvline(m(FAULT_START_S), color="grey", lw=0.8)
-    ax[1].set(title="B. Clock monitor: normalised innovation squared (RAIM sees nothing here)",
-              ylabel="NIS")
-    ax[1].legend(fontsize=8, loc="lower left")
+    ax[1].axhline(chi2.isf(ccfg.p_fa, 1), color="k", ls="--", lw=1, label="alarm threshold")
+    mark_onset(ax[1])
+    ax[1].set(title="B: time push (clock monitor; RAIM sees nothing)",
+              ylabel="normalised innovation squared (-)")
+    ax[1].legend(loc="lower left")
 
-    ax[2].plot(m(pull["t"]), pull["herr"], label="horizontal error")
-    ax[2].plot(m(pull["t"]), pull["hpl"], label="HPL")
-    ax[2].axvline(m(FAULT_START_S), color="grey", lw=0.8)
-    ax[2].set(title="C. Position pull-off: error escapes HPL with no alarm",
-              xlabel="minutes", ylabel="metres")
-    ax[2].legend(fontsize=8)
+    ax[2].semilogy(m(pull["t"]), pull["herr"], label="horizontal position error")
+    ax[2].semilogy(m(pull["t"]), pull["hpl"], label="horizontal protection level")
+    mark_onset(ax[2])
+    ax[2].set(title="C: position pull-off (no alarm from either monitor)", ylabel="metres (m)")
+    ax[2].legend(loc="upper left")
+    for a in ax:
+        a.set_xlabel("time since start of recording (min)")
     fig.savefig(RESULTS / "real_data_scenarios.png", dpi=130)
 
     (RESULTS / "real_data_summary.md").write_text("\n".join(lines) + "\n")

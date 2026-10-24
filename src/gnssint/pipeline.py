@@ -8,6 +8,9 @@ from .orbits import ecef_to_geodetic, enu_rotation
 from .raim import RaimConfig, raim_fde
 from .solver import prepare_epoch, wls
 
+# Applied to the fitted a and b, so it multiplies sigma (the variance by 1.25^2).
+SIGMA_INFLATION = 1.25
+
 
 @dataclass
 class EpochRecord:
@@ -59,11 +62,13 @@ def process(obs, nav, ref_xyz, sigma_ab, raim_cfg=RaimConfig(), mode="L1",
 
 
 def calibrate_sigma(obs, nav, ref_xyz, sigma_ab=(0.6, 0.9), mode="L1", mask_deg=10.0,
-                    inflation=1.25, iterations=2):
+                    inflation=SIGMA_INFLATION, iterations=2):
     """Fit sigma^2(el) = a^2 + b^2 / sin^2(el) to fault-free residuals.
 
     Uses r_i / sqrt(1 - P_ii), whose variance is sigma_i^2 when the model holds,
-    then inflates by ``inflation`` so the model overbounds rather than just fits.
+    then multiplies a and b (and therefore sigma) by ``inflation`` so the model is
+    deliberately conservative rather than a bare fit. The returned coefficients
+    already include the inflation.
     """
     a, b = sigma_ab
     for _ in range(iterations):
